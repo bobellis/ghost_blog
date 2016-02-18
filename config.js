@@ -22,8 +22,8 @@ config = {
         },
 
         server: {
-            host: '127.0.0.1',
-            port: '2368'
+            host: '0.0.0.0',
+            port: 'process.env.PORT'
         }
     },
 
@@ -51,9 +51,13 @@ config = {
         // #### Database
         // Ghost supports sqlite3 (default), MySQL & PostgreSQL
         database: {
-            client: 'sqlite3',
+            client: 'postgres',
             connection: {
-                filename: path.join(__dirname, '/content/data/ghost-dev.db')
+                host: 'ec2-54-225-215-233.compute-1.amazonaws.com',
+                user: 'iqngduetndmtvj',
+                password: 'OnQKCJd5TUFE0rJFR69MHJjwh2',
+                database: 'd80kcaplv036jm',
+                port: '5432'
             },
             debug: false
         },

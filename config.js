@@ -14,17 +14,30 @@ config = {
         url: 'http://my-ghost-blog.com',
         mail: {},
         database: {
-            client: 'sqlite3',
+            client: 'postgres',
             connection: {
-                filename: path.join(__dirname, '/content/data/ghost.db')
+                  host: process.env.POSTGRES_HOST,
+                  user: process.env.POSTGRES_USER,
+                  password: process.env.POSTGRES_PASSWORD,
+                  database: process.env.POSTGRES_DATABASE,
+                  port: '5432'
             },
-            debug: false
-        },
 
         server: {
             host: '0.0.0.0',
             port: 'process.env.PORT'
+        },
+
+        storage: {
+        active: 'ghost-s3',
+        'ghost-s3': {
+            accessKeyId: 'AKIAJFF375XIVCZOFG7Q',
+            secretAccessKey: '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',
+            bucket: 'februaryorange',
+            region: 'Oregon',
+            assetHost: 'februaryorange.s3-website-us-west-2.amazonaws.com'
         }
+},
     },
 
     // ### Development **(default)**

@@ -7,7 +7,7 @@ var path          = require('path'),
     fs            = require('fs'),
     url           = require('url'),
     _             = require('lodash'),
-    knex          = require('knex'),
+
     validator     = require('validator'),
     readDirectory = require('../utils/read-directory'),
     readThemes    = require('../utils/read-themes'),
@@ -18,8 +18,7 @@ var path          = require('path'),
     appRoot       = path.resolve(__dirname, '../../../'),
     corePath      = path.resolve(appRoot, 'core/'),
     testingEnvs   = ['testing', 'testing-mysql', 'testing-pg'],
-    defaultConfig = {},
-    knexInstance;
+    defaultConfig = {};
 
 function ConfigManager(config) {
     /**
@@ -86,25 +85,6 @@ ConfigManager.prototype.init = function (rawConfig) {
     });
 };
 
-function configureDriver(client) {
-    var pg;
-
-    if (client === 'pg' || client === 'postgres' || client === 'postgresql') {
-        try {
-            pg = require('pg');
-        } catch (e) {
-            pg = require('pg.js');
-        }
-
-        // By default PostgreSQL returns data as strings along with an OID that identifies
-        // its type.  We're setting the parser to convert OID 20 (int8) into a javascript
-        // integer.
-        pg.types.setTypeParser(20, function (val) {
-            return val === null ? null : parseInt(val, 10);
-        });
-    }
-}
-
 /**
  * Allows you to set the config object.
  * @param {Object} config Only accepts an object at the moment.
@@ -123,6 +103,12 @@ ConfigManager.prototype.set = function (config) {
     // onto our cached config object.  This allows us to only update our
     // local copy with properties that have been explicitly set.
     _.merge(this._config, config);
+
+    // Special case for the database config, which should be overridden not merged
+
+    if (config && config.database) {
+        this._config.database = config.database;
+    }
 
     // Special case for the them.navigation JSON object, which should be overridden not merged
     if (config && config.theme && config.theme.navigation) {
@@ -156,12 +142,7 @@ ConfigManager.prototype.set = function (config) {
     assetHash = this._config.assetHash ||
         (crypto.createHash('md5').update(packageInfo.version + Date.now()).digest('hex')).substring(0, 10);
 
-    if (!knexInstance && this._config.database && this._config.database.client) {
-        configureDriver(this._config.database.client);
-        knexInstance = knex(this._config.database);
-    }
-
-    // Protect against accessing a non-existant object.
+    // Protect against accessing a non-existent object.
     // This ensures there's always at least a storage object
     // because it's referenced in multiple places.
     this._config.storage = this._config.storage || {};
@@ -174,9 +155,6 @@ ConfigManager.prototype.set = function (config) {
     }
 
     _.merge(this._config, {
-        database: {
-            knex: knexInstance
-        },
         ghostVersion: packageInfo.version,
         paths: {
             appRoot:          appRoot,
@@ -195,8 +173,6 @@ ConfigManager.prototype.set = function (config) {
 
             adminViews:       path.join(corePath, '/server/views/'),
             helperTemplates:  path.join(corePath, '/server/helpers/tpl/'),
-            exportPath:       path.join(corePath, '/server/data/export/'),
-            lang:             path.join(corePath, '/shared/lang/'),
 
             availableThemes:  this._config.paths.availableThemes || {},
             availableApps:    this._config.paths.availableApps || {},
@@ -216,6 +192,7 @@ ConfigManager.prototype.set = function (config) {
             preview: 'p',
             private: 'private'
         },
+        internalApps: ['private-blogging'],
         slugs: {
             // Used by generateSlug to generate slugs for posts, tags, users, ..
             // reserved slugs are reserved but can be extended/removed by apps

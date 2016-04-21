@@ -8,11 +8,11 @@
 var _          = require('lodash'),
     bookshelf  = require('bookshelf'),
     config     = require('../../config'),
+    db         = require('../../data/db'),
     errors     = require('../../errors'),
     filters    = require('../../filters'),
     moment     = require('moment'),
     Promise    = require('bluebird'),
-    sanitizer  = require('validator').sanitize,
     schema     = require('../../data/schema'),
     utils      = require('../../utils'),
     uuid       = require('node-uuid'),
@@ -25,7 +25,7 @@ var _          = require('lodash'),
 
 // ### ghostBookshelf
 // Initializes a new Bookshelf instance called ghostBookshelf, for reference elsewhere in Ghost.
-ghostBookshelf = bookshelf(config.database.knex);
+ghostBookshelf = bookshelf(db.knex);
 
 // Load the Bookshelf registry plugin, which helps us avoid circular dependencies
 ghostBookshelf.plugin('registry');
@@ -182,10 +182,6 @@ ghostBookshelf.Model = ghostBookshelf.Model.extend({
         return proto.finalize.call(this, attrs);
     },
 
-    sanitize: function sanitize(attr) {
-        return sanitizer(this.get(attr)).xss();
-    },
-
     // Get attributes that have been updated (values before a .save() call)
     updatedAttributes: function updatedAttributes() {
         return this._updatedAttributes || {};
@@ -279,7 +275,8 @@ ghostBookshelf.Model = ghostBookshelf.Model.extend({
 
         var self = this,
             itemCollection = this.forge(null, {context: options.context}),
-            tableName      = _.result(this.prototype, 'tableName');
+            tableName      = _.result(this.prototype, 'tableName'),
+            allColumns = options.columns;
 
         // Set this to true or pass ?debug=true as an API option to get output
         itemCollection.debug = options.debug && process.env.NODE_ENV !== 'production';
@@ -312,6 +309,9 @@ ghostBookshelf.Model = ghostBookshelf.Model.extend({
 
         return itemCollection.fetchPage(options).then(function formatResponse(response) {
             var data = {};
+
+            // re-add any computed properties that were stripped out before the call to fetchPage
+            options.columns = allColumns;
             data[tableName] = response.collection.toJSON(options);
             data.meta = {pagination: response.pagination};
 

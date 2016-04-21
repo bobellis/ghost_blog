@@ -17,6 +17,7 @@ var _                          = require('lodash'),
     EmailError                 = require('./email-error'),
     DataImportError            = require('./data-import-error'),
     TooManyRequestsError       = require('./too-many-requests-error'),
+    TokenRevocationError       = require('./token-revocation-error'),
     i18n                       = require('../i18n'),
     config,
     errors,
@@ -32,6 +33,29 @@ function getConfigModule() {
     }
 
     return config;
+}
+
+function isValidErrorStatus(status) {
+    return _.isNumber(status) && status >= 400 && status < 600;
+}
+
+function getStatusCode(error) {
+    if (error.statusCode) {
+        return error.statusCode;
+    }
+
+    if (error.status && isValidErrorStatus(error.status)) {
+        error.statusCode = error.status;
+        return error.statusCode;
+    }
+
+    if (error.code && isValidErrorStatus(error.code)) {
+        error.statusCode = error.code;
+        return error.statusCode;
+    }
+
+    error.statusCode = 500;
+    return error.statusCode;
 }
 
 /**
@@ -60,11 +84,19 @@ errors = {
         return Promise.reject(err);
     },
 
-    logInfo: function (component, info) {
+    logComponentInfo: function (component, info) {
         if ((process.env.NODE_ENV === 'development' ||
             process.env.NODE_ENV === 'staging' ||
             process.env.NODE_ENV === 'production')) {
             console.info(chalk.cyan(component + ':', info));
+        }
+    },
+
+    logComponentWarn: function (component, warning) {
+        if ((process.env.NODE_ENV === 'development' ||
+            process.env.NODE_ENV === 'staging' ||
+            process.env.NODE_ENV === 'production')) {
+            console.info(chalk.yellow(component + ':', warning));
         }
     },
 
@@ -197,7 +229,7 @@ errors = {
             var errorContent = {};
 
             // TODO: add logic to set the correct status code
-            statusCode = errorItem.code || 500;
+            statusCode = getStatusCode(errorItem);
 
             errorContent.message = _.isString(errorItem) ? errorItem :
                 (_.isObject(errorItem) ? errorItem.message : i18n.t('errors.errors.unknownApiError'));
@@ -227,7 +259,7 @@ errors = {
         if (error.code && (error.errno || error.detail)) {
             error.db_error_code = error.code;
             error.errorType = 'DatabaseError';
-            error.code = 500;
+            error.statusCode = 500;
 
             return this.rejectError(error);
         }
@@ -243,7 +275,7 @@ errors = {
         res.status(httpErrors.statusCode).json({errors: httpErrors.errors});
     },
 
-    renderErrorPage: function (code, err, req, res, next) {
+    renderErrorPage: function (statusCode, err, req, res, next) {
         /*jshint unused:false*/
         var self = this,
             defaultErrorTemplatePath = path.resolve(getConfigModule().paths.adminViews, 'user-error.hbs');
@@ -281,17 +313,22 @@ errors = {
         function renderErrorInt(errorView) {
             var stack = null;
 
-            if (code !== 404 && process.env.NODE_ENV !== 'production' && err.stack) {
+            if (statusCode !== 404 && process.env.NODE_ENV !== 'production' && err.stack) {
                 stack = parseStack(err.stack);
             }
 
-            res.status(code).render((errorView || 'error'), {
+            res.status(statusCode).render((errorView || 'error'), {
                 message: err.message || err,
-                code: code,
+                // We have to use code here, as it's the variable passed to the template
+                // And error templates can be customised... therefore this constitutes API
+                // In future I recommend we make this be used for a combo-version of statusCode & errorCode
+                code: statusCode,
+                // Adding this as being distinctly, the status code, as opposed to any other code see #6526
+                statusCode: statusCode,
                 stack: stack
             }, function (templateErr, html) {
                 if (!templateErr) {
-                    return res.status(code).send(html);
+                    return res.status(statusCode).send(html);
                 }
                 // There was an error trying to render the error page, output the error
                 self.logError(templateErr, i18n.t('errors.errors.errorWhilstRenderingError'), i18n.t('errors.errors.errorTemplateHasError'));
@@ -303,12 +340,12 @@ errors = {
                     '<p>' + i18n.t('errors.errors.encounteredError') + '</p>' +
                     '<pre>' + hbs.handlebars.Utils.escapeExpression(templateErr.message || templateErr) + '</pre>' +
                     '<br ><p>' + i18n.t('errors.errors.whilstTryingToRender') + '</p>' +
-                    code + ' ' + '<pre>'  + hbs.handlebars.Utils.escapeExpression(err.message || err) + '</pre>'
+                    statusCode + ' ' + '<pre>'  + hbs.handlebars.Utils.escapeExpression(err.message || err) + '</pre>'
                 );
             });
         }
 
-        if (code >= 500) {
+        if (statusCode >= 500) {
             this.logError(err, i18n.t('errors.errors.renderingErrorPage'), i18n.t('errors.errors.caughtProcessingError'));
         }
 
@@ -334,10 +371,13 @@ errors = {
     },
 
     error500: function (err, req, res, next) {
+        var statusCode = getStatusCode(err),
+            returnErrors = [];
+
         // 500 errors should never be cached
         res.set({'Cache-Control': 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0'});
 
-        if (err.status === 404 || err.code === 404) {
+        if (statusCode === 404) {
             return this.error404(req, res, next);
         }
 
@@ -345,19 +385,14 @@ errors = {
             if (!err || !(err instanceof Error)) {
                 next();
             }
-            errors.renderErrorPage(err.status || err.code || 500, err, req, res, next);
+            errors.renderErrorPage(statusCode, err, req, res, next);
         } else {
-            var statusCode = 500,
-                returnErrors = [];
-
             if (!_.isArray(err)) {
                 err = [].concat(err);
             }
 
             _.each(err, function (errorItem) {
                 var errorContent = {};
-
-                statusCode = errorItem.code || 500;
 
                 errorContent.message = _.isString(errorItem) ? errorItem :
                     (_.isObject(errorItem) ? errorItem.message : i18n.t('errors.errors.unknownError'));
@@ -374,7 +409,8 @@ errors = {
 // using Function#bind for expressjs
 _.each([
     'logWarn',
-    'logInfo',
+    'logComponentInfo',
+    'logComponentWarn',
     'rejectError',
     'throwError',
     'logError',
@@ -405,3 +441,4 @@ module.exports.EmailError                 = EmailError;
 module.exports.DataImportError            = DataImportError;
 module.exports.MethodNotAllowedError      = MethodNotAllowedError;
 module.exports.TooManyRequestsError       = TooManyRequestsError;
+module.exports.TokenRevocationError       = TokenRevocationError;

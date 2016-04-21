@@ -15,7 +15,7 @@ var Settings,
 // It's much easier for us to work with it as a single level
 // instead of iterating those categories every time
 function parseDefaultSettings() {
-    var defaultSettingsInCategories = require('../data/default-settings.json'),
+    var defaultSettingsInCategories = require('../data/schema/').defaultSettings,
         defaultSettingsFlattened = {};
 
     _.each(defaultSettingsInCategories, function each(settings, categoryName) {
@@ -87,18 +87,7 @@ Settings = ghostBookshelf.Model.extend({
 
             return validation.validateActiveTheme(themeName);
         });
-    },
-
-    saving: function saving() {
-        // disabling sanitization until we can implement a better version
-        // All blog setting keys that need their values to be escaped.
-        // if (this.get('type') === 'blog' && _.contains(['title', 'description', 'email'], this.get('key'))) {
-        //    this.set('value', this.sanitize('value'));
-        // }
-
-        return ghostBookshelf.Model.prototype.saving.apply(this, arguments);
     }
-
 }, {
     findOne: function (options) {
         // Allow for just passing the key instead of attributes

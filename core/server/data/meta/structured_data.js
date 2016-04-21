@@ -10,7 +10,7 @@ function getStructuredData(metaData) {
         'og:site_name': metaData.blog.title,
         'og:type': metaData.ogType,
         'og:title': metaData.metaTitle,
-        'og:description': metaData.metaDescription,
+        'og:description': metaData.metaDescription || metaData.excerpt,
         'og:url': metaData.canonicalUrl,
         'og:image': metaData.coverImage,
         'article:published_time': metaData.publishedDate,
@@ -18,12 +18,16 @@ function getStructuredData(metaData) {
         'article:tag': metaData.keywords,
         'twitter:card': card,
         'twitter:title': metaData.metaTitle,
-        'twitter:description': metaData.metaDescription,
+        'twitter:description': metaData.metaDescription || metaData.excerpt,
         'twitter:url': metaData.canonicalUrl,
-        'twitter:image:src': metaData.coverImage
+        'twitter:image:src': metaData.coverImage,
+        'twitter:label1': metaData.authorName ? 'Written by' : undefined,
+        'twitter:data1': metaData.authorName,
+        'twitter:label2': metaData.keywords ? 'Filed under' : undefined,
+        'twitter:data2': metaData.keywords ? metaData.keywords.join(', ') : undefined
     };
 
-    // return structored data removing null or undefined keys
+    // return structured data removing null or undefined keys
     return Object.keys(structuredData).reduce(function (data, key) {
         var content = structuredData[key];
         if (content !== null && typeof content !== 'undefined') {

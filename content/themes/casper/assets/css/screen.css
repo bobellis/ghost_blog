@@ -193,7 +193,9 @@ body {
     -o-font-feature-settings: 'kern' 1;
     text-rendering: geometricPrecision;
 }
-
+#welcome {
+    margin: 1em;
+}
 ::-moz-selection {
     background: #D6EDFF;
 }
@@ -1590,7 +1592,7 @@ body:not(.post-template) .post-title {
 }
 
 .poweredby {
-    display: block;
+    display: inline-block;
     width: 45%;
     float: right;
     text-align: right;
@@ -1600,6 +1602,12 @@ body:not(.post-template) .post-title {
     display: block;
     width: 45%;
     float: left;
+}
+
+.my-link {
+
+    float: left;
+    margin: 1em;
 }
 
 

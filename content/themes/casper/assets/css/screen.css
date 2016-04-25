@@ -1608,6 +1608,7 @@ body:not(.post-template) .post-title {
 
     float: left;
     margin: 1em;
+    padding: 1em; 
 }
 
 

@@ -1605,10 +1605,10 @@ body:not(.post-template) .post-title {
 }
 
 .my-link {
-
     float: left;
     margin: 1em;
-    padding: 1em; 
+    padding: 1em;
+    vertical-align: middle; 
 }
 
 

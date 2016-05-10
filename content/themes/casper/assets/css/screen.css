@@ -926,6 +926,21 @@ body.nav-opened .nav {
     word-wrap: break-word;
 }
 
+#welcome {
+    position: relative;
+    width: 80%;
+    max-width: 710px;
+    margin: 4rem auto;
+    padding-bottom: 4rem;
+    word-wrap: break-word;
+}
+
+.logo {
+    list-style: none;
+    display: inline;
+    padding-right: 1em; 
+}
+
 /* Add a little circle in the middle of the border-bottom on our .post
    just for the lolz and stylepoints. */
 .post:after {
@@ -1608,7 +1623,7 @@ body:not(.post-template) .post-title {
     float: left;
     margin: 1em;
     padding: 1em;
-    vertical-align: middle; 
+    vertical-align: middle;
 }
 
 
@@ -1839,6 +1854,16 @@ body:not(.post-template) .post-title {
     }
 
     .post {
+        width: auto;
+        margin-top: 2rem;
+        margin-bottom: 2rem;
+        margin-left: 16px;
+        margin-right: 16px;
+        padding-bottom: 2rem;
+        line-height: 1.65em;
+    }
+
+    #welcome {
         width: auto;
         margin-top: 2rem;
         margin-bottom: 2rem;
